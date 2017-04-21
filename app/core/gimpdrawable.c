@@ -1244,6 +1244,7 @@ gimp_drawable_set_buffer_full (GimpDrawable *drawable,
 GeglNode *
 gimp_drawable_get_source_node (GimpDrawable *drawable)
 {
+  GeglNode *input;
   GeglNode *source;
   GeglNode *filter;
   GeglNode *output;
@@ -1255,11 +1256,19 @@ gimp_drawable_get_source_node (GimpDrawable *drawable)
 
   drawable->private->source_node = gegl_node_new ();
 
+  input = gegl_node_get_input_proxy (drawable->private->source_node, "input");
+
   source = GIMP_DRAWABLE_GET_CLASS (drawable)->get_source_node (drawable);
 
   gegl_node_add_child (drawable->private->source_node, source);
 
   g_object_unref (source);
+
+  if (gegl_node_has_pad (source, "input"))
+    {
+      gegl_node_connect_to (input,  "output",
+                            source, "input");
+    }
 
   filter = gimp_filter_stack_get_graph (GIMP_FILTER_STACK (drawable->private->filter_stack));
 
