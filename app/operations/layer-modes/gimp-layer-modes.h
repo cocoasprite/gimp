@@ -43,6 +43,8 @@ const gchar            * gimp_layer_mode_get_operation       (GimpLayerMode     
 
 GimpLayerModeFunc        gimp_layer_mode_get_function        (GimpLayerMode        mode);
 
+GimpLayerModeAffectMask  gimp_layer_mode_get_affect_mask     (GimpLayerMode        mode);
+
 GimpLayerModeContext     gimp_layer_mode_get_context         (GimpLayerMode        mode);
 
 GimpLayerMode          * gimp_layer_mode_get_context_array   (GimpLayerMode        mode,

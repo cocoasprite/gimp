@@ -60,15 +60,16 @@ typedef struct _GimpLayerModeInfo GimpLayerModeInfo;
 
 struct _GimpLayerModeInfo
 {
-  GimpLayerMode           layer_mode;
-  const gchar            *op_name;
-  GimpLayerModeFunc       function;
-  GimpLayerModeFlags      flags;
-  GimpLayerModeContext    context;
-  GimpLayerCompositeMode  paint_composite_mode;
-  GimpLayerCompositeMode  composite_mode;
-  GimpLayerColorSpace     composite_space;
-  GimpLayerColorSpace     blend_space;
+  GimpLayerMode            layer_mode;
+  const gchar             *op_name;
+  GimpLayerModeFunc        function;
+  GimpLayerModeFlags       flags;
+  GimpLayerModeContext     context;
+  GimpLayerCompositeMode   paint_composite_mode;
+  GimpLayerCompositeMode   composite_mode;
+  GimpLayerColorSpace      composite_space;
+  GimpLayerColorSpace      blend_space;
+  GimpLayerModeAffectMask  affect_mask;
 };
 
 
@@ -98,7 +99,8 @@ static const GimpLayerModeInfo layer_mode_infos[] =
                             GIMP_LAYER_MODE_FLAG_COMPOSITE_SPACE_IMMUTABLE,
     .context              = GIMP_LAYER_MODE_CONTEXT_ALL,
     .paint_composite_mode = GIMP_LAYER_COMPOSITE_SRC_OVER,
-    .composite_mode       = GIMP_LAYER_COMPOSITE_SRC_OVER
+    .composite_mode       = GIMP_LAYER_COMPOSITE_SRC_OVER,
+    .affect_mask          = GIMP_LAYER_MODE_AFFECT_SRC
   },
 
   { GIMP_LAYER_MODE_BEHIND_LEGACY,
@@ -869,7 +871,8 @@ static const GimpLayerModeInfo layer_mode_infos[] =
     .context              = GIMP_LAYER_MODE_CONTEXT_FADE,
     .paint_composite_mode = GIMP_LAYER_COMPOSITE_SRC_OVER,
     .composite_mode       = GIMP_LAYER_COMPOSITE_SRC_OVER,
-    .composite_space      = GIMP_LAYER_COLOR_SPACE_RGB_LINEAR
+    .composite_space      = GIMP_LAYER_COLOR_SPACE_RGB_LINEAR,
+    .affect_mask          = GIMP_LAYER_MODE_AFFECT_DST
   },
 
   { GIMP_LAYER_MODE_ANTI_ERASE,
@@ -1276,12 +1279,7 @@ gimp_layer_mode_get_paint_composite_mode (GimpLayerMode mode)
 const gchar *
 gimp_layer_mode_get_operation (GimpLayerMode mode)
 {
-  const GimpLayerModeInfo *info = gimp_layer_mode_info (mode);
-
-  if (! info)
-    return "gimp:layer-mode";
-
-  return info->op_name;
+  return "gimp:layer-mode";
 }
 
 GimpLayerModeFunc
@@ -1293,6 +1291,17 @@ gimp_layer_mode_get_function (GimpLayerMode mode)
     return gimp_operation_layer_mode_process_pixels;
 
   return info->function;
+}
+
+GimpLayerModeAffectMask
+gimp_layer_mode_get_affect_mask (GimpLayerMode mode)
+{
+  const GimpLayerModeInfo *info = gimp_layer_mode_info (mode);
+
+  if (! info)
+    return GIMP_LAYER_MODE_AFFECT_NONE;
+
+  return info->affect_mask;
 }
 
 GimpLayerModeContext
