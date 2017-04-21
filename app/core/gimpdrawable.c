@@ -181,6 +181,7 @@ static void       gimp_drawable_real_swap_pixels   (GimpDrawable      *drawable,
                                                     GeglBuffer        *buffer,
                                                     gint               x,
                                                     gint               y);
+static GeglNode * gimp_drawable_real_get_source_node (GimpDrawable    *drawable);
 
 
 G_DEFINE_TYPE_WITH_CODE (GimpDrawable, gimp_drawable, GIMP_TYPE_ITEM,
@@ -260,6 +261,7 @@ gimp_drawable_class_init (GimpDrawableClass *klass)
   klass->set_buffer                  = gimp_drawable_real_set_buffer;
   klass->push_undo                   = gimp_drawable_real_push_undo;
   klass->swap_pixels                 = gimp_drawable_real_swap_pixels;
+  klass->get_source_node             = gimp_drawable_real_get_source_node;
 
   g_object_class_override_property (object_class, PROP_BUFFER, "buffer");
 
@@ -324,6 +326,12 @@ gimp_drawable_finalize (GObject *object)
     {
       g_object_unref (drawable->private->source_node);
       drawable->private->source_node = NULL;
+    }
+
+  if (drawable->private->buffer_source_node)
+    {
+      g_object_unref (drawable->private->buffer_source_node);
+      drawable->private->buffer_source_node = NULL;
     }
 
   if (drawable->private->filter_stack)
@@ -919,6 +927,20 @@ gimp_drawable_real_swap_pixels (GimpDrawable *drawable,
   gimp_drawable_update (drawable, x, y, width, height);
 }
 
+static GeglNode *
+gimp_drawable_real_get_source_node (GimpDrawable *drawable)
+{
+  g_warn_if_fail (drawable->private->buffer_source_node == NULL);
+
+  drawable->private->buffer_source_node =
+    gegl_node_new_child (NULL,
+                         "operation", "gegl:buffer-source",
+                         "buffer",    gimp_drawable_get_buffer (drawable),
+                         NULL);
+
+  return g_object_ref (drawable->private->buffer_source_node);
+}
+
 
 /*  public functions  */
 
@@ -1222,6 +1244,7 @@ gimp_drawable_set_buffer_full (GimpDrawable *drawable,
 GeglNode *
 gimp_drawable_get_source_node (GimpDrawable *drawable)
 {
+  GeglNode *source;
   GeglNode *filter;
   GeglNode *output;
 
@@ -1232,18 +1255,18 @@ gimp_drawable_get_source_node (GimpDrawable *drawable)
 
   drawable->private->source_node = gegl_node_new ();
 
-  drawable->private->buffer_source_node =
-    gegl_node_new_child (drawable->private->source_node,
-                         "operation", "gegl:buffer-source",
-                         "buffer",    gimp_drawable_get_buffer (drawable),
-                         NULL);
+  source = GIMP_DRAWABLE_GET_CLASS (drawable)->get_source_node (drawable);
+
+  gegl_node_add_child (drawable->private->source_node, source);
+
+  g_object_unref (source);
 
   filter = gimp_filter_stack_get_graph (GIMP_FILTER_STACK (drawable->private->filter_stack));
 
   gegl_node_add_child (drawable->private->source_node, filter);
 
-  gegl_node_connect_to (drawable->private->buffer_source_node, "output",
-                        filter,                                "input");
+  gegl_node_connect_to (source, "output",
+                        filter, "input");
 
   output = gegl_node_get_output_proxy (drawable->private->source_node, "output");
 
